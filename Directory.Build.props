@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Jeremy Denton</Authors>
+    <Description>Independent, transactional docking for Avalonia applications.</Description>
+    <NuGetAudit>false</NuGetAudit>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup><None Include="$(MSBuildThisFileDirectory)PACKAGE_README.md" Pack="true" PackagePath="/README.md" /></ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Pangaea.Dock.Core/Pangaea.Dock.Core.csproj" />
+    <Project Path="src/Pangaea.Dock.Runtime/Pangaea.Dock.Runtime.csproj" />
+    <Project Path="src/Pangaea.Dock.Avalonia/Pangaea.Dock.Avalonia.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Pangaea.Dock.Demo/Pangaea.Dock.Demo.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pangaea.Dock.Tests/Pangaea.Dock.Tests.csproj" />
+    <Project Path="tests/Pangaea.Dock.Harness/Pangaea.Dock.Harness.csproj" />
+  </Folder>
+</Solution>

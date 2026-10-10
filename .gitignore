@@ -1,0 +1,20 @@
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+*.rsuser
+*.DotSettings.user
+
+# IDE / editor state
+.idea/
+.vscode/
+.vs/
+
+# Claude Code session state
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

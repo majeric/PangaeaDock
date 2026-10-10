@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../Pangaea.Dock.Core/Pangaea.Dock.Core.csproj" /></ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Pangaea.Dock.Runtime/Pangaea.Dock.Runtime.csproj" />
+    <PackageReference Include="Avalonia" />
+  </ItemGroup>
+</Project>
