@@ -1,5 +1,25 @@
 # Pangaea Dock progress
 
+## 2026-10-10 — review findings (not yet fixed)
+
+Put under local git (`main`, no remote). A line-by-line review found these defects; none are fixed:
+
+- `WorkspaceStore.LoadWithBackup` only falls back to `.bak` for IO/JSON/argument/invalid-operation
+  errors. `InvalidDataException` (validation, size, schema version) and `NotSupportedException`
+  escape, so a parseable-but-invalid main file throws instead of loading the backup.
+- `DockWorkspace` commit assigns `Layout` before popping the undo/redo entry; `ClearHistory()` during
+  a pending undo makes the pop throw after the layout already changed (no `Changed`, no `Collect`).
+- `MoveTabs`, `SwapPanels`, `AddPanel` and `ApplyLayout` skip capability checks: a `CanFloat=false`
+  tab can be dragged into a floating host, `CanCollapse=false` into a rail, and a template can drop a
+  `CanClose=false` panel.
+- Collapse strips `RegionKey` and leaves an empty placeholder; pin never replaces it, so
+  collapse-then-pin of the primary group leaves an empty primary group beside the panel.
+- `Evaluate` throws for a stale `AddPanel.ReplaceSlotId`; `UpdatePlacement` throws below 100px and
+  aborts `CaptureFloatingPositions` for the remaining windows; splitting beside an empty group is
+  rejected as "beside itself".
+- Test strength: 480 of the 528 checks are the random loop, which ignores operation success and only
+  compares slot-ID sets. No test sets a capability flag false.
+
 ## 2026-10-10 — disappearing panels after tab drag
 
 Reproduced the user's report with actual headless pointer input: dragging the Activity tab into
@@ -100,7 +120,8 @@ This is headless evidence, not proof that the current registered-host order matc
 | WD-10 | Data-only storage, backup, arrangements and demo commands | Schema migrations, portable sanitization, concurrent-process storage leases |
 | WD-11 | Keyboard menu routes, names, rendered visual checks | Custom automation peers, native reader, contrast/motion/RTL and performance gates |
 | WD-12 | Local package-only restore/build/render passed | Public license/publication identity, broader compatibility matrix |
-| WD-13–15 | Not started | Laurentia adapter, suite migration, old Dock removal |
+| WD-13 | Laurentia adapter live (`Laurentia/Dock/PangaeaDockHost.cs`, 39 integration checks) | See Laurentia/PROGRESS.md known gaps |
+| WD-14–15 | Not started | Suite migration off `IDockable`, old Dock removal |
 
 The evaluation preview does not claim complete fulfillment of the production architecture.
 The actual API is described in PACKAGE_README.md and the source. In particular, the demo's export

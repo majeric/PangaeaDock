@@ -83,7 +83,8 @@ before restore. The library has no Laurentia or existing Dock dependency.
   are not complete. Named arrangements preserve live panels, including ones absent from a template.
 - The current UI rebuilds group chrome on commit while retaining panel controls. More granular
   focus/bookmark preservation, target hysteresis and large-workspace performance are still work items.
-- Laurentia's migration has not started; its current Dock backend remains unchanged.
+- Laurentia renders its shell through this library via its own adapter (`Laurentia/Dock/PangaeaDockHost.cs`);
+  its document/palette contracts still use Dock.Avalonia types until the later migration.
 
 ## Design and continuation
 
