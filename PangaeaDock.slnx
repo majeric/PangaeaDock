@@ -10,5 +10,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Pangaea.Dock.Tests/Pangaea.Dock.Tests.csproj" />
     <Project Path="tests/Pangaea.Dock.Harness/Pangaea.Dock.Harness.csproj" />
+    <Project Path="tests/Pangaea.Dock.UnitTests/Pangaea.Dock.UnitTests.csproj" />
   </Folder>
 </Solution>
