@@ -4,6 +4,19 @@ All notable changes to Pangaea Dock are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). Before 1.0, minor versions may break the public API.
 
+## [Unreleased]
+
+### Fixed
+
+- `ResizeSplit` rejects a weight count that doesn't match the split (it threw, or silently succeeded).
+- `ApplyArrangementAsync` matches exact panel identities before types, so placement is deterministic.
+- Arrow-key tab navigation keeps keyboard focus on the newly selected tab.
+
+### Added
+
+- xUnit test suite (409 tests, headless) with `Coverage.ps1`: Core 99.6%, Runtime 100%, Avalonia 100% line coverage.
+- [Usage guide](docs/USAGE.md) and [API review](docs/API_REVIEW.md).
+
 ## [0.1.0] - 2026-10-10
 
 First public release: an **evaluation preview**. The libraries work and are tested, but the API is
