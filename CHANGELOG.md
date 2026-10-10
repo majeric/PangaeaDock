@@ -4,7 +4,7 @@ All notable changes to Pangaea Dock are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). Before 1.0, minor versions may break the public API.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-10-10
 
 First public release: an **evaluation preview**. The libraries work and are tested, but the API is
 not yet stable and several production acceptance gates remain open (see [PROGRESS.md](https://github.com/majeric/PangaeaDock/blob/main/PROGRESS.md)).
@@ -28,7 +28,10 @@ not yet stable and several production acceptance gates remain open (see [PROGRES
   picker, Ctrl+Alt+Z/Y layout history and overridable neutral light/dark resources.
 - Desktop demo (`samples/Pangaea.Dock.Demo`) with six sample panels, Explore/Focus presets, named
   arrangements, import/export and theme switching.
-- Verification: 528 core/runtime checks, 54 headless Avalonia/Skia UI interaction checks with
+- Close/float/collapse capability flags are enforced for every user operation (drag, swap, add,
+  float, collapse, close); `ApplyLayout` remains consumer authority.
+- Border-tray buttons show the panel name (rotated along side edges), not just an icon.
+- Verification: 992 core/runtime checks, 55 headless Avalonia/Skia UI interaction checks with
   rendered frames, and a package-only consumer smoke test.
 
 ### Known limitations

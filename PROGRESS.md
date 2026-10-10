@@ -1,8 +1,16 @@
 # Pangaea Dock progress
 
-## 2026-10-10 — review findings (not yet fixed)
+## 2026-10-10 — review fixes, tray labels, 0.1.0 release
 
-Put under local git (`main`, no remote). A line-by-line review found these defects; none are fixed:
+All review findings below are fixed (commit "Fix review defects in engine, workspace and store"),
+each with a regression check; the first new check fails on the old code. The random sequence now
+asserts that most operations succeed, that tab-to-panel bindings hold, and a full undo/redo round
+trip. Border-tray buttons now show the panel title (Laurentia's palettes showed only a glyph).
+Verified: 992 core/runtime checks, 55 headless UI checks, 42 Laurentia integration checks.
+Published as 0.1.0 at https://github.com/majeric/PangaeaDock (MIT; GitHub release with .nupkg
+attached, no NuGet.org). API review/usage guide and an xUnit coverage suite are separate branches.
+
+Original findings, now fixed:
 
 - `WorkspaceStore.LoadWithBackup` only falls back to `.bak` for IO/JSON/argument/invalid-operation
   errors. `InvalidDataException` (validation, size, schema version) and `NotSupportedException`
