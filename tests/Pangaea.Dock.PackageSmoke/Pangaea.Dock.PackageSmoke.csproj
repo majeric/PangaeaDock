@@ -9,7 +9,7 @@
     <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Pangaea.Dock.Avalonia" Version="0.1.0-preview.1" />
+    <PackageReference Include="Pangaea.Dock.Avalonia" Version="0.1.0" />
     <PackageReference Include="Avalonia.Headless" Version="11.3.12" />
     <PackageReference Include="Avalonia.Skia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />

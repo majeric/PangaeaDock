@@ -1,1 +1,5 @@
-<Project Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Pangaea Dock core: immutable, data-only docking layout model with pure, revision-checked operations, validation, normalization and geometry. No UI dependency.</Description>
+  </PropertyGroup>
+</Project>
