@@ -113,6 +113,7 @@ internal static class Program
         Check(Run(new CollapseGroup("inspector-group", DockSide.Right)), "collapse"); Pump();
         Check(workspace.Layout.Hosts[0].Rails.Length == 1, "rail exists"); Capture("05-sidebar");
         var railButton = surface.GetVisualDescendants().OfType<Button>().First(b => (ToolTip.GetTip(b)?.ToString() ?? "").StartsWith("Open Inspector"));
+        Check((railButton.Content as string ?? "").Contains("Inspector") && railButton.Bounds.Width > 60, "rail button names its panel instead of showing only a glyph");
         var at = railButton.TranslatePoint(new Point(15, 15), window)!.Value;
         window.MouseDown(at, MouseButton.Left); window.MouseUp(at, MouseButton.Left); Pump(); Capture("06-auto-hide-open");
         Check(surface.GetVisualDescendants().OfType<TextBox>().Any(t => t.Text == "Laurentia"), "rail click realized inspector content");

@@ -257,11 +257,17 @@ public sealed class DockSurface : Grid
             if (vertical) strip.Width = 30; else strip.Height = 30;
             foreach (var rail in items)
             {
+                // Label trays with the panel name: an icon alone doesn't say which panel is collapsed.
                 var slot = rail.Group.ActiveSlot!;
-                string icon = _owner.Workspace.Registry.Descriptors.GetValueOrDefault(_owner.Workspace.Layout.Panels[slot.InstanceId].TypeId)?.Icon ?? "◇";
-                var button = DockTheme.Button(icon, "Open " + _owner.Title(slot), () => ToggleOverlay(rail.Group.Id));
-                button.Width = 30; button.Height = 30; button.Padding = new Thickness(0);
-                strip.Children.Add(button);
+                string title = _owner.Title(slot);
+                string icon = _owner.Workspace.Registry.Descriptors.GetValueOrDefault(_owner.Workspace.Layout.Panels[slot.InstanceId].TypeId)?.Icon ?? "";
+                string label = (icon is "" or "◇" ? "" : icon + "  ") + title + (rail.Group.Slots.Length > 1 ? $"  +{rail.Group.Slots.Length - 1}" : "");
+                var button = DockTheme.Button(label, "Open " + title, () => ToggleOverlay(rail.Group.Id));
+                button.Height = 30; button.MaxWidth = 220; button.Padding = new Thickness(10, 0);
+                // Side trays read along the edge, as in IDE tool-window bars.
+                strip.Children.Add(vertical
+                    ? new LayoutTransformControl { Child = button, LayoutTransform = new RotateTransform(side == DockSide.Left ? -90 : 90) }
+                    : button);
             }
             Children.Add(strip); _rails.Add(strip);
         }
