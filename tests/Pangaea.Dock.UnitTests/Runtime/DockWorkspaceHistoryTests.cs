@@ -386,8 +386,7 @@ public class DockWorkspaceArrangementTests
         Assert.Equal(["a", "b"], one.Skip(1).Order());
     }
 
-    [Fact(Skip = "Bug: ApplyArrangementAsync matches template panels in dictionary (hash) order, so a type-only match for one " +
-        "template panel can claim the live panel whose identity another template panel names; placement is nondeterministic.")]
+    [Fact]
     public async Task ApplyArrangement_ExactIdentityMatchTakesPrecedenceOverTypeMatch()
     {
         using var f = new WorkspaceFixture(L.TwoColumns());

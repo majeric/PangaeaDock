@@ -61,14 +61,13 @@ layout, and that redoing everything restores the final layout.
 
 ## Current numbers (2026-10-10)
 
-409 tests: 405 pass and 4 are skipped because they expose real bugs (see below). The suite takes about 6 s and passed
-on repeated runs.
+409 tests, all passing. The suite takes about 6 s and passed on repeated runs.
 
 | Assembly | Line | Branch | Target (line) |
 |---|---|---|---|
-| Pangaea.Dock.Core | 99.6% (281/282) | 98.3% | 90% |
-| Pangaea.Dock.Runtime | 100% (232/232) | 94.4% | 90% |
-| Pangaea.Dock.Avalonia | 100% (561/561) | 89.1% | 70% |
+| Pangaea.Dock.Core | 99.6% (283/284) | 98.0% | 90% |
+| Pangaea.Dock.Runtime | 100% (234/234) | 94.0% | 90% |
+| Pangaea.Dock.Avalonia | 100% (570/570) | 88.7% | 70% |
 
 ## Notable gaps and why
 
@@ -81,11 +80,9 @@ on repeated runs.
 - Headless checks do not cover native-platform behavior: OS z-order of floating windows, DPI, real monitor topology and
   screen readers. See PROGRESS.md for these release gates.
 
-## Known bugs (skipped tests)
+## Bugs this suite found (fixed)
 
-| Skipped test | Bug |
-|---|---|
-| `ResizeSplitTests.ResizeSplit_TooFewWeights_IsRejectedWithoutThrowing` | `DockEngine.Evaluate` throws `IndexOutOfRangeException` (from `LayoutTree.Normalize`) when a `ResizeSplit` has fewer weights than children; `Evaluate` is meant to return an error. |
-| `ResizeSplitTests.ResizeSplit_TooManyWeights_IsRejected` | Extra `ResizeSplit` weights are silently dropped and the plan succeeds. |
-| `DockTabTests.ArrowKey_KeepsKeyboardFocusOnTheNewlySelectedTab` | Left/Right on a tab focuses the rebuilt header synchronously. The ScrollViewer template has not attached it yet, so `Focus()` fails and keyboard focus is lost after the first arrow press. |
-| `DockWorkspaceArrangementTests.ApplyArrangement_ExactIdentityMatchTakesPrecedenceOverTypeMatch` | `ApplyArrangementAsync` matches template panels in hash order, so a type-only match can claim the live panel that another template panel names by identity. Panel placement is therefore nondeterministic between runs. |
+Four tests first ran skipped because they exposed real defects; all four are fixed and the tests now run:
+`ResizeSplit` with too few weights threw, and with too many silently succeeded; arrow-key tab navigation lost
+keyboard focus after one press; and `ApplyArrangementAsync` matched panels in hash order, so placement varied
+between runs.

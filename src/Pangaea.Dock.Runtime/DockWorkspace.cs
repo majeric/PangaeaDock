@@ -154,9 +154,12 @@ public sealed class DockWorkspace : IDisposable
         try { LayoutTree.Validate(template); }
         catch (InvalidDataException e) { Report("Could not apply " + name + ": " + e.Message); return Task.FromResult(false); }
         var available = Layout.Panels.Values.ToList(); var mapping = new Dictionary<string, PanelState>();
+        // Exact identities first, so a type-only match can't take a panel another template entry names.
         foreach (var state in template.Panels.Values)
+            if (available.FirstOrDefault(p => p.Id == state.Id && p.TypeId == state.TypeId) is { } exact) { mapping[state.Id] = exact; available.Remove(exact); }
+        foreach (var state in template.Panels.Values.Where(s => !mapping.ContainsKey(s.Id)).OrderBy(s => s.Id, StringComparer.Ordinal))
         {
-            var match = available.FirstOrDefault(p => p.Id == state.Id && p.TypeId == state.TypeId) ?? available.FirstOrDefault(p => p.TypeId == state.TypeId);
+            var match = available.FirstOrDefault(p => p.TypeId == state.TypeId);
             if (match is not null) { mapping[state.Id] = match; available.Remove(match); }
             else
             {

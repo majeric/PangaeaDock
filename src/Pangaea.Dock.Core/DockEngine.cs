@@ -147,8 +147,10 @@ public static class DockEngine
                 }
                 case ResizeSplit resize:
                 {
-                    if (!before.Hosts.SelectMany(h => LayoutTree.Nodes(h.Root)).OfType<SplitNode>().Any(s => s.Id == resize.SplitId))
-                        throw new InvalidOperationException("Splitter no longer exists.");
+                    var split = before.Hosts.SelectMany(h => LayoutTree.Nodes(h.Root)).OfType<SplitNode>().FirstOrDefault(s => s.Id == resize.SplitId)
+                        ?? throw new InvalidOperationException("Splitter no longer exists.");
+                    if (resize.Weights.IsDefault || resize.Weights.Length != split.Children.Length)
+                        throw new InvalidOperationException("Give one size for each panel beside the splitter.");
                     if (resize.Weights.Any(w => w <= 0 || !double.IsFinite(w))) throw new InvalidOperationException("Invalid splitter size.");
                     result = LayoutTree.Map(before, n => n is SplitNode s && s.Id == resize.SplitId
                         ? s with { Weights = resize.Weights.Select(w => w / resize.Weights.Sum()).ToImmutableArray() } : n);

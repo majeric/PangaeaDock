@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Pangaea.Dock.Core;
 
 namespace Pangaea.Dock.Avalonia;
@@ -67,7 +68,12 @@ public sealed class DockGroupView : Border
                     int index = group.Slots.IndexOf(slot), next = (index + (e.Key == Key.Left ? -1 : 1) + group.Slots.Length) % group.Slots.Length;
                     await owner.Workspace.ExecuteAsync(new SelectTab(group.Slots[next].Id));
                     owner.PanelActivated?.Invoke(group.Slots[next].InstanceId);
-                    if (surface.GroupViews.TryGetValue(group.Id, out var current)) current.TabHeaders[group.Slots[next].Id].Focus(); e.Handled = true;
+                    // Selection rebuilds the group; focus the new header once it is attached.
+                    string nextId = group.Slots[next].Id; e.Handled = true;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (surface.GroupViews.TryGetValue(group.Id, out var current) && current.TabHeaders.TryGetValue(nextId, out var header)) header.Focus();
+                    }, DispatcherPriority.Loaded);
                 }
                 if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift)) { tab.ContextMenu.Open(tab); e.Handled = true; }
             };

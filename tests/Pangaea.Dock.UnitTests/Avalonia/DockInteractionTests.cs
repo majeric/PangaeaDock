@@ -325,7 +325,10 @@ public class RailTests
 
         var button = ui.Main.ButtonWithTip("Open Text");
 
-        Assert.Equal(30, button.Bounds.Width);
+        // Side trays show the panel name, rotated: the button's own height is the tray thickness.
+        Assert.Contains("Text", button.Content as string);
+        Assert.Equal(30, button.Bounds.Height);
+        Assert.IsType<LayoutTransformControl>(button.Parent);
         Assert.Equal(30, ui.Main.Bounds.Width - ui.Main.ContentBounds.Width - ui.Main.ContentBounds.X, 1);
         Assert.Null(Overlay(ui));
     }

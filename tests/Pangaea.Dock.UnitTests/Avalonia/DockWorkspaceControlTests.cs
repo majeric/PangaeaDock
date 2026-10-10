@@ -299,8 +299,7 @@ public class DockTabTests
         Assert.Equal("b", ui.Workspace.Layout.Group("left").ActiveSlotId);
     }
 
-    [AvaloniaFact(Skip = "Bug: DockGroupView arrow-key handler focuses the rebuilt tab header synchronously, before the ScrollViewer " +
-        "template has attached it, so keyboard focus is lost after the first arrow press.")]
+    [AvaloniaFact]
     public void ArrowKey_KeepsKeyboardFocusOnTheNewlySelectedTab()
     {
         using var ui = new DockUi();

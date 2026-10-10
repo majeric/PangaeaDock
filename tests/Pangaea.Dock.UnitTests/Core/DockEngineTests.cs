@@ -602,13 +602,13 @@ public class ResizeSplitTests
         Assert.Contains("Invalid splitter size", Reject(L.TwoColumns(), new ResizeSplit("cols", [weight, 1])));
     }
 
-    [Fact(Skip = "Bug: ResizeSplit does not check the weight count; Normalize silently drops extra weights and the plan succeeds.")]
+    [Fact]
     public void ResizeSplit_TooManyWeights_IsRejected()
     {
         Reject(L.TwoColumns(), new ResizeSplit("cols", [3, 1, 4]));
     }
 
-    [Fact(Skip = "Bug: DockEngine.Evaluate throws IndexOutOfRangeException from LayoutTree.Normalize when ResizeSplit has fewer weights than children.")]
+    [Fact]
     public void ResizeSplit_TooFewWeights_IsRejectedWithoutThrowing()
     {
         Reject(L.TwoColumns(), new ResizeSplit("cols", [1]));
