@@ -147,19 +147,6 @@ Packages land in `artifacts/packages/`.
 Details and evidence: [PROGRESS.md](PROGRESS.md). Release history: [CHANGELOG.md](CHANGELOG.md).
 Planned API changes for 0.2: [API review](docs/API_REVIEW.md).
 
-## Design documents
-
-1. [Design brief](DESIGN_BRIEF.md) — the original requirements, preserved verbatim.
-2. [Architecture](ARCHITECTURE.md) — boundaries, identities, contracts, interaction semantics,
-   persistence, reliability and consumer integration. Describes the intended complete product.
-3. [Implementation plan](IMPLEMENTATION_PLAN.md) — work packages, acceptance tests and migration gates.
-4. [Orientation](ORIENTATION.md) — where things live in the source, and how to verify changes.
-5. [Progress](PROGRESS.md) — what is implemented, the evidence, and remaining gaps.
-6. [Decision records](docs/decisions/) — e.g. [drag transport](docs/decisions/0001-drag-transport.md).
-
-The public API in source and [PACKAGE_README.md](PACKAGE_README.md) describes this release;
-don't infer completion of a work package from a similarly named control.
-
 ## License
 
 [MIT](LICENSE) © 2026 Jeremy Denton
