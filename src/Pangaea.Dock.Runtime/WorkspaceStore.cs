@@ -32,7 +32,8 @@ public static class WorkspaceStore
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(json); stream.Write(bytes); stream.Flush(true);
             }
-            if (File.Exists(full)) File.Replace(temporary, full, full + ".bak", true);
+            // Keep .bak as the last good layout: a corrupt main file must never replace it.
+            if (File.Exists(full)) File.Replace(temporary, full, IsReadable(full) ? full + ".bak" : null, true);
             else File.Move(temporary, full);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
@@ -49,9 +50,15 @@ public static class WorkspaceStore
         {
             if (!File.Exists(candidate)) continue;
             try { return Load(candidate); }
-            catch (Exception e) when (e is IOException or JsonException or ArgumentException or InvalidOperationException)
+            catch (Exception e) when (e is IOException or InvalidDataException or JsonException or NotSupportedException
+                or ArgumentException or InvalidOperationException or UnauthorizedAccessException)
             { diagnostic?.Invoke("Could not restore " + Path.GetFileName(candidate) + ": " + e.Message); }
         }
         return null;
+    }
+    private static bool IsReadable(string path)
+    {
+        try { Load(path); return true; }
+        catch { return false; }
     }
 }

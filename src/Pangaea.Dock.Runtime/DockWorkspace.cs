@@ -26,7 +26,8 @@ public sealed class DockWorkspace : IDisposable
     public string? RedoDescription => _redo.LastOrDefault()?.Description;
     public event Action<WorkspaceChange>? Changed;
     public event Action<string>? Diagnostic;
-    /// <summary>Called before a session loses its last live slot. Cancellation leaves the layout unchanged.</summary>
+    /// <summary>Called before a session loses its last live slot, once per panel. Cancellation leaves the layout
+    /// unchanged, but cannot undo side effects an earlier panel's approval already performed.</summary>
     public Func<PanelState, PanelSession, CancellationToken, Task<bool>>? CanReleaseAsync { get; set; }
     /// <summary>Optional presenter preparation. Throw to abort before publication. Do not attach visuals here.</summary>
     public Action<DockLayout>? PreparePresentation { get; set; }
@@ -49,7 +50,8 @@ public sealed class DockWorkspace : IDisposable
         // A singleton retained by undo is still the same logical instance when reopened.
         if (operation is AddPanel add && Registry.Descriptors.TryGetValue(add.Panel.TypeId, out var descriptor) && descriptor.Singleton)
         {
-            if (add.ReplaceSlotId is not null && Layout.Panels[Layout.Slot(add.ReplaceSlotId).InstanceId].TypeId == add.Panel.TypeId)
+            if (add.ReplaceSlotId is not null && Layout.Slots.FirstOrDefault(s => s.Id == add.ReplaceSlotId) is { } replaced
+                && Layout.Panels[replaced.InstanceId].TypeId == add.Panel.TypeId)
                 return DockEngine.Evaluate(Layout, new SelectTab(add.ReplaceSlotId), Registry.Descriptors);
             var retained = _sessionStates.Values.FirstOrDefault(p => p.TypeId == add.Panel.TypeId && !Layout.Panels.ContainsKey(p.Id));
             if (retained is not null) operation = add with { Panel = retained };
@@ -63,8 +65,8 @@ public sealed class DockWorkspace : IDisposable
         return await CommitAsync(result.Plan, cancellationToken);
     }
     public Task<bool> CommitAsync(OperationPlan plan, CancellationToken cancellationToken = default) =>
-        CommitInternalAsync(plan, null, cancellationToken);
-    private async Task<bool> CommitInternalAsync(OperationPlan plan, bool? historyUndo, CancellationToken token)
+        CommitInternalAsync(plan, null, null, cancellationToken);
+    private async Task<bool> CommitInternalAsync(OperationPlan plan, bool? historyUndo, HistoryEntry? entry, CancellationToken token)
     {
         if (_disposed || _busy) { Report("A workspace operation is already pending or the workspace is closed."); return false; }
         if (plan.WorkspaceId != Layout.Id || plan.ExpectedRevision != Layout.Revision)
@@ -79,16 +81,16 @@ public sealed class DockWorkspace : IDisposable
             token.ThrowIfCancellationRequested();
             if (_disposed) return false;
             if (plan.ExpectedRevision != Layout.Revision) { Report("The layout changed while waiting."); return false; }
+            var from = historyUndo == true ? _undo : _redo; var to = historyUndo == true ? _redo : _undo;
+            // History can be cleared while a release guard is pending; never publish a replay whose entry is gone.
+            if (historyUndo.HasValue && (from.Count == 0 || !ReferenceEquals(from[^1], entry)))
+            { Report("Layout history changed while waiting."); return false; }
             Prepare(plan.Candidate, created);
             PreparePresentation?.Invoke(plan.Candidate);
             token.ThrowIfCancellationRequested();
             var previous = Layout;
             Layout = plan.Candidate with { Id = previous.Id, Revision = previous.Revision + 1 };
-            if (historyUndo.HasValue)
-            {
-                var from = historyUndo.Value ? _undo : _redo; var to = historyUndo.Value ? _redo : _undo;
-                var entry = from[^1]; from.RemoveAt(from.Count - 1); to.Add(entry);
-            }
+            if (historyUndo.HasValue) { from.RemoveAt(from.Count - 1); to.Add(entry!); }
             else if (plan.RecordHistory)
             {
                 _undo.Add(new(previous, Layout, plan.Description)); _redo.Clear();
@@ -108,7 +110,11 @@ public sealed class DockWorkspace : IDisposable
     private void Prepare(DockLayout layout, List<string> created)
     {
         foreach (var state in layout.Panels.Values)
+        {
             if (!_sessions.ContainsKey(state.Id)) { _sessions.Add(state.Id, Registry.Create(state)); _sessionStates.Add(state.Id, state); created.Add(state.Id); }
+            else if (_sessionStates[state.Id].TypeId != state.TypeId)
+                throw new InvalidDataException("Panel identity " + state.Id + " already belongs to another panel type.");
+        }
     }
     private void ValidateMultiplicity(DockLayout layout)
     {
@@ -125,7 +131,7 @@ public sealed class DockWorkspace : IDisposable
         if (stack.Count == 0) return Task.FromResult(false);
         var entry = stack[^1];
         return CommitInternalAsync(new(Layout.Id, Layout.Revision, undo ? entry.Before : entry.After,
-            (undo ? "Undo " : "Redo ") + entry.Description), undo, default);
+            (undo ? "Undo " : "Redo ") + entry.Description), undo, entry, default);
     }
     public Task<bool> AddAsync(string typeId, string groupId, string? replaceSlot = null)
     {
@@ -145,6 +151,8 @@ public sealed class DockWorkspace : IDisposable
     /// <summary>Apply an arrangement while retaining all current panels and their live state.</summary>
     public Task<bool> ApplyArrangementAsync(DockLayout template, string name)
     {
+        try { LayoutTree.Validate(template); }
+        catch (InvalidDataException e) { Report("Could not apply " + name + ": " + e.Message); return Task.FromResult(false); }
         var available = Layout.Panels.Values.ToList(); var mapping = new Dictionary<string, PanelState>();
         foreach (var state in template.Panels.Values)
         {
@@ -172,9 +180,13 @@ public sealed class DockWorkspace : IDisposable
     }
     public void UpdatePlacement(string hostId, WindowPlacement placement)
     {
-        if (_busy || _disposed) return;
+        if (_busy || _disposed || !Layout.Hosts.Any(h => h.Id == hostId)) return;
+        // A native window can be smaller than a stored placement allows; store the smallest valid size.
+        placement = placement with { Width = Math.Max(100, placement.Width), Height = Math.Max(100, placement.Height) };
         var candidate = Layout with { Hosts = Layout.Hosts.Select(h => h.Id == hostId ? h with { Placement = placement } : h).ToImmutableArray() };
-        LayoutTree.Validate(candidate); Layout = candidate with { Revision = Layout.Revision + 1 };
+        try { LayoutTree.Validate(candidate); }
+        catch (InvalidDataException e) { Report("Window placement ignored: " + e.Message); return; }
+        Layout = candidate with { Revision = Layout.Revision + 1 };
         // Native geometry notifications do not rebuild/reparent the visual tree.
         Notify(new("Window placement", false));
     }

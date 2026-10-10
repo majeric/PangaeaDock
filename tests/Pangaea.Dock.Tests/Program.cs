@@ -84,6 +84,7 @@ using (var w = new DockWorkspace(Registry()))
 {
     for (int i = 0; i < 8; i++) await w.AddAsync("text", Primary(w));
     var ids = w.Layout.Slots.Select(s => s.Id).ToHashSet(); var random = new Random(20261010);
+    var instances = w.Layout.Panels.Keys.ToHashSet(); int succeeded = 0;
     for (int i = 0; i < 240; i++)
     {
         var groups = w.Layout.Groups.ToArray(); var slots = w.Layout.Slots.ToArray();
@@ -93,11 +94,21 @@ using (var w = new DockWorkspace(Registry()))
             1 => new CollapseGroup(groups[random.Next(groups.Length)].Id, DockSide.Left),
             _ => new MoveTabs([slots[random.Next(slots.Length)].Id], groups[random.Next(groups.Length)].Id, (DockSide)random.Next(5))
         };
-        await w.ExecuteAsync(operation); LayoutTree.Validate(w.Layout);
+        var bindings = w.Layout.Slots.ToDictionary(s => s.Id, s => s.InstanceId);
+        if (await w.ExecuteAsync(operation)) succeeded++;
+        LayoutTree.Validate(w.Layout);
         Check(w.Layout.Slots.Select(s => s.Id).ToHashSet().SetEquals(ids), "random operation preserves slots " + i);
+        Check(w.Layout.Slots.All(s => bindings[s.Id] == s.InstanceId) && w.Layout.Panels.Keys.ToHashSet().SetEquals(instances), "random operation keeps each tab's panel " + i);
         var normalized = LayoutTree.Normalize(w.Layout);
         Check(WorkspaceStore.Serialize(normalized) == WorkspaceStore.Serialize(LayoutTree.Normalize(normalized)), "normalization idempotent " + i);
     }
+    // Rejected operations still count as passes above, so require that most of the sequence really ran.
+    Check(succeeded > 120, $"random sequence mostly succeeds ({succeeded}/240)");
+    string Shape(DockLayout l) => WorkspaceStore.Serialize(l with { Revision = 0 });
+    var final = Shape(w.Layout); int undone = 0;
+    while (w.CanUndo) { Check(await w.UndoAsync(), "random history undo " + undone); undone++; }
+    for (int i = 0; i < undone; i++) Check(await w.RedoAsync(), "random history redo " + i);
+    Check(undone > 0 && Shape(w.Layout) == final, "undoing and redoing the whole random history restores the layout");
 }
 var allocation = DockGeometry.Allocate(1000, [0.1, 0.9], [200, 100]);
 Check(allocation[0] == 200 && allocation[1] == 800, "independent minimum allocation fixture");
@@ -130,6 +141,78 @@ foreach (var invalid in new[]
     Check(rejected, "malformed null data rejected safely");
 }
 
+// Capability flags hold for every route, not only the matching command.
+PanelRegistry Fixed()
+{
+    var registry = Registry();
+    registry.Register(new("fixed", "Fixed", CanClose: false, CanFloat: false, CanCollapse: false), _ => new TestSession());
+    return registry;
+}
+using (var w = new DockWorkspace(Fixed()))
+{
+    await w.AddAsync("fixed", Primary(w)); await w.AddAsync("text", Primary(w));
+    string fix = w.Layout.Slots.First().Id, text = w.Layout.Slots.Last().Id;
+    Check(await w.ExecuteAsync(new FloatTabs([text])), "ordinary panel floats");
+    var floatGroup = w.Layout.Groups.First(g => g.Slots.Any(s => s.Id == text)).Id;
+    Check(!await w.ExecuteAsync(new MoveTabs([fix], floatGroup)), "non-floating panel cannot be dragged into a floating window");
+    Check(!await w.ExecuteAsync(new SwapPanels(fix, text)), "non-floating panel cannot be swapped into a floating window");
+    Check(await w.ExecuteAsync(new MoveTabs([text], Primary(w))), "ordinary panel docks back");
+    Check(await w.ExecuteAsync(new MoveTabs([text], Primary(w), DockSide.Right)), "split for rail test");
+    var textGroup = w.Layout.Groups.First(g => g.Slots.Any(s => s.Id == text)).Id;
+    Check(await w.ExecuteAsync(new CollapseGroup(textGroup, DockSide.Right)), "ordinary group collapses");
+    Check(!await w.ExecuteAsync(new MoveTabs([fix], textGroup)), "non-collapsing panel cannot be dragged into a rail");
+    Check(!await w.ExecuteAsync(new CloseTabs([fix])) && w.Layout.Slots.Any(s => s.Id == fix), "non-closing panel stays");
+    var dropped = LayoutTree.Normalize(LayoutTree.Map(w.Layout, n => n is TabGroup g ? g with { Slots = g.Slots.Where(s => s.Id != fix).ToImmutableArray() } : n));
+    Check(await w.ExecuteAsync(new ApplyLayout(dropped)), "consumer ApplyLayout may remove a panel it owns");
+    var textInstance = w.Layout.Slot(text).InstanceId;
+    var clash = w.Layout with { Panels = w.Layout.Panels.SetItem(textInstance, w.Layout.Panels[textInstance] with { TypeId = "single" }) };
+    Check(!await w.ExecuteAsync(new ApplyLayout(clash)), "a layout reusing a live panel identity for another type is rejected");
+}
+
+// Collapsing the primary region and pinning it back restores one primary group, not an empty one beside it.
+using (var w = new DockWorkspace(Registry()))
+{
+    await w.AddAsync("text", Primary(w)); var primary = w.Layout.Groups.Single();
+    Check(primary.RegionKey == "primary" && await w.ExecuteAsync(new CollapseGroup(primary.Id, DockSide.Left)), "collapse primary");
+    Check(await w.ExecuteAsync(new PinGroup(primary.Id)), "pin primary");
+    var groups = LayoutTree.Groups(w.Layout.Hosts[0].Root).ToArray();
+    Check(groups.Length == 1 && groups[0].RegionKey == "primary" && groups[0].Slots.Length == 1, "pinned primary keeps its region and leaves no empty group");
+}
+// A collapsed group returns beside its own neighbour; splitting beside an empty region group is allowed.
+using (var w = new DockWorkspace(Registry()))
+{
+    for (int i = 0; i < 3; i++) await w.AddAsync("text", Primary(w));
+    var slots = w.Layout.Slots.Select(s => s.Id).ToArray();
+    await w.ExecuteAsync(new MoveTabs([slots[1]], Primary(w), DockSide.Right));
+    var middle = w.Layout.Groups.First(g => g.Slots.Any(s => s.Id == slots[1])).Id;
+    await w.ExecuteAsync(new MoveTabs([slots[2]], middle, DockSide.Right));
+    var last = w.Layout.Groups.First(g => g.Slots.Any(s => s.Id == slots[2])).Id;
+    Check(await w.ExecuteAsync(new CollapseGroup(last, DockSide.Right)) && w.Layout.Hosts[0].Rails[0].ReturnGroupId == middle, "rail returns beside its neighbour, not the first group");
+    await w.ExecuteAsync(new PinGroup(last));
+    Check(await w.ExecuteAsync(new CloseTabs([slots[0]])) && w.Layout.Group(Primary(w)).Slots.IsEmpty, "primary emptied");
+    Check(await w.ExecuteAsync(new MoveTabs([slots[1]], Primary(w), DockSide.Left)), "can split beside an empty region group");
+}
+// History cleared while an undo waits for its release guard: the undo must not half-apply.
+using (var w = new DockWorkspace(Registry()))
+{
+    await w.AddAsync("text", Primary(w));
+    var gate = new TaskCompletionSource<bool>(); w.CanReleaseAsync = async (_, _, _) => await gate.Task;
+    var revision = w.Layout.Revision; var undo = w.UndoAsync();
+    w.ClearHistory(); gate.SetResult(true);
+    Check(!await undo && w.Layout.Revision == revision && w.Layout.Slots.Count() == 1, "undo abandoned when its history entry is cleared");
+}
+using (var w = new DockWorkspace(Registry()))
+{
+    await w.AddAsync("text", Primary(w));
+    Check(!await w.AddAsync("single", Primary(w), "no-such-slot"), "stale replacement slot is an error, not an exception");
+    await w.ExecuteAsync(new FloatTabs([w.Layout.Slots.Single().Id]));
+    var floating = w.Layout.Hosts.Single(h => h.Id != w.Layout.MainHostId).Id;
+    w.UpdatePlacement(floating, new WindowPlacement(10, 10, 40, 30));
+    Check(w.Layout.Hosts.Single(h => h.Id == floating).Placement!.Width == 100, "tiny floating window stores the minimum size instead of throwing");
+    var revision = w.Layout.Revision; w.UpdatePlacement("gone", new WindowPlacement());
+    Check(w.Layout.Revision == revision, "unknown host placement is ignored");
+}
+
 string folder = Path.GetFullPath(Path.Combine("artifacts", "tests", "Pangaea-tests-" + Guid.NewGuid().ToString("N"))); Directory.CreateDirectory(folder);
 string path = Path.Combine(folder, "layout.json");
 try
@@ -138,6 +221,11 @@ try
     Check(WorkspaceStore.Load(path).Revision == 10, "atomic write");
     File.WriteAllText(path, "not json");
     Check(WorkspaceStore.LoadWithBackup(path)?.Revision == 0, "last-good backup recovered");
+    WorkspaceStore.Save(path, empty with { Revision = 3 });
+    File.WriteAllText(path, WorkspaceStore.Serialize(empty).Replace("\"SchemaVersion\": 1", "\"SchemaVersion\": 99"));
+    Check(WorkspaceStore.LoadWithBackup(path)?.Revision == 0, "backup recovered from a parseable but unsupported file");
+    WorkspaceStore.Save(path, empty with { Revision = 4 });
+    Check(WorkspaceStore.Load(path + ".bak").Revision == 0, "saving over a corrupt file keeps the last good backup");
     bool rejected = false;
     try { WorkspaceStore.Deserialize(WorkspaceStore.Serialize(empty).Replace("\"SchemaVersion\": 1", "\"SchemaVersion\": 99")); }
     catch (InvalidDataException) { rejected = true; }

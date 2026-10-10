@@ -12,6 +12,8 @@ public sealed record CollapseGroup(string GroupId, DockSide Side) : DockOperatio
 public sealed record PinGroup(string GroupId) : DockOperation;
 public sealed record ResizeSplit(string SplitId, ImmutableArray<double> Weights) : DockOperation;
 public sealed record SelectTab(string SlotId) : DockOperation;
+/// <summary>Consumer-authored replacement layout. Capability flags restrict user operations, not this one:
+/// the consumer decides which panels exist (for example after closing a document it owns).</summary>
 public sealed record ApplyLayout(DockLayout Layout, string Label = "Apply workspace") : DockOperation;
 public sealed record OperationPlan(string WorkspaceId, long ExpectedRevision, DockLayout Candidate, string Description, bool RecordHistory = true);
 public sealed record OperationResult(OperationPlan? Plan, string? Error)
@@ -49,7 +51,7 @@ public static class DockEngine
                     var ids = move.SlotIds.ToHashSet();
                     bool inRail = before.Hosts.Any(h => h.Rails.Any(r => r.Group.Id == target.Id));
                     if (move.Side != DockSide.Center && inRail) throw new InvalidOperationException("Pin this group before splitting it.");
-                    if (move.Side != DockSide.Center && target.Slots.All(s => ids.Contains(s.Id)))
+                    if (move.Side != DockSide.Center && !target.Slots.IsEmpty && target.Slots.All(s => ids.Contains(s.Id)))
                         throw new InvalidOperationException("A group cannot split beside itself without another tab remaining.");
                     result = Remove(before, ids);
                     if (move.Side == DockSide.Center)
@@ -118,8 +120,11 @@ public static class DockEngine
                     Capability(group.Slots, d => d.CanCollapse, "This panel cannot collapse.");
                     var host = before.Hosts.FirstOrDefault(h => LayoutTree.Groups(h.Root).Any(g => g.Id == group.Id))
                         ?? throw new InvalidOperationException("The group is already collapsed.");
-                    string? anchor = LayoutTree.Groups(host.Root).FirstOrDefault(g => g.Id != group.Id)?.Id;
+                    // A region group leaves an empty placeholder that keeps its region; pinning returns there.
+                    // Otherwise pinning returns beside the nearest sibling in the split the group leaves.
                     var placeholder = new TabGroup(Ids.New(), [], RegionKey: group.RegionKey);
+                    string? anchor = group.RegionKey is not null ? placeholder.Id
+                        : Neighbor(host.Root, group.Id) ?? LayoutTree.Groups(host.Root).FirstOrDefault(g => g.Id != group.Id)?.Id;
                     result = before with { Hosts = before.Hosts.Select(h => h.Id != host.Id ? h : h with
                     {
                         Root = LayoutTree.Map(h.Root, n => n.Id == group.Id ? placeholder : n),
@@ -135,8 +140,8 @@ public static class DockEngine
                     var target = LayoutTree.Groups(host.Root).FirstOrDefault(g => g.Id == rail.ReturnGroupId) ?? LayoutTree.Groups(host.Root).First();
                     result = before with { Hosts = before.Hosts.Select(h => h.Id == host.Id
                         ? h with { Rails = h.Rails.Remove(rail) } : h).ToImmutableArray() };
-                    result = target.Slots.IsEmpty && target.RegionKey is null
-                        ? LayoutTree.Map(result, n => n.Id == target.Id ? rail.Group : n)
+                    result = target.Slots.IsEmpty
+                        ? LayoutTree.Map(result, n => n.Id == target.Id ? rail.Group with { RegionKey = target.RegionKey ?? rail.Group.RegionKey } : n)
                         : InsertBeside(result, target.Id, rail.Group, rail.Side);
                     label = "Pin group"; break;
                 }
@@ -159,12 +164,48 @@ public static class DockEngine
             }
             result = LayoutTree.Normalize(result) with { Revision = before.Revision + 1 };
             LayoutTree.Validate(result);
+            if (operation is not ApplyLayout) EnforceCapabilities(before, result, catalog);
             foreach (var d in catalog.Values.Where(d => d.Singleton))
                 if (result.Panels.Values.Count(p => p.TypeId == d.Id) > 1) throw new InvalidOperationException(d.Title + " can only be open once.");
             return new(new(before.Id, before.Revision, result, label, operation is not SelectTab), null);
         }
         catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or ArgumentException)
         { return new(null, ex.Message); }
+    }
+    /// <summary>Every user operation, however it gets there, must respect the close/float/collapse flags.</summary>
+    private static void EnforceCapabilities(DockLayout before, DockLayout after, IReadOnlyDictionary<string, PanelDescriptor> catalog)
+    {
+        var was = Placements(before); var now = Placements(after);
+        foreach (var panel in before.Panels.Values)
+            if (catalog.GetValueOrDefault(panel.TypeId) is { CanClose: false } d && !after.Panels.ContainsKey(panel.Id))
+                throw new InvalidOperationException(d.Title + " cannot be closed.");
+        foreach (var panel in after.Panels.Values)
+        {
+            if (catalog.GetValueOrDefault(panel.TypeId) is not { } d) continue;
+            var (floating, rail) = now[panel.Id]; var (wasFloating, wasRail) = was.GetValueOrDefault(panel.Id);
+            if (!d.CanFloat && floating && !wasFloating) throw new InvalidOperationException(d.Title + " cannot float.");
+            if (!d.CanCollapse && rail && !wasRail) throw new InvalidOperationException(d.Title + " cannot collapse.");
+        }
+    }
+    private static Dictionary<string, (bool Floating, bool Rail)> Placements(DockLayout layout)
+    {
+        var map = new Dictionary<string, (bool, bool)>();
+        foreach (var host in layout.Hosts)
+        {
+            bool floating = host.Id != layout.MainHostId;
+            foreach (var slot in LayoutTree.Groups(host.Root).SelectMany(g => g.Slots)) map[slot.InstanceId] = (floating, false);
+            foreach (var slot in host.Rails.SelectMany(r => r.Group.Slots)) map[slot.InstanceId] = (floating, true);
+        }
+        return map;
+    }
+    private static string? Neighbor(LayoutNode root, string groupId)
+    {
+        foreach (var split in LayoutTree.Nodes(root).OfType<SplitNode>())
+        {
+            int i = split.Children.FindIndex(c => c.Id == groupId);
+            if (i >= 0) return LayoutTree.Groups(split.Children[i > 0 ? i - 1 : i + 1]).FirstOrDefault()?.Id;
+        }
+        return null;
     }
     private static string? Next(TabGroup g, HashSet<string> removed)
     {
