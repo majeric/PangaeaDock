@@ -1,0 +1,15 @@
+# Normalize text to LF in the repository; check out with platform line endings.
+* text=auto
+
+# Windows scripts keep CRLF on every platform.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.nupkg binary
+*.snupkg binary
