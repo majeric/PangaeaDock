@@ -12,8 +12,9 @@ requires cached Avalonia dependencies; omit `-Offline` on a fresh connected mach
 - Model/invariants: `src/Pangaea.Dock.Core/Layout.cs`.
 - Pure commands: `src/Pangaea.Dock.Core/DockEngine.cs`; operation plans are immutable and revision-checked.
 - Single geometry implementation: `src/Pangaea.Dock.Core/Geometry.cs`.
-- Tests: `tests/Pangaea.Dock.Tests/Program.cs`; includes seeded operation sequences, cancellation,
-  normalization idempotence, identity retention and corruption/failure cases.
+- Tests: `tests/Pangaea.Dock.UnitTests` (xUnit + headless Avalonia, coverage via `./Coverage.ps1`; see
+  `docs/TESTING.md`). Legacy `tests/Pangaea.Dock.Tests/Program.cs` still runs from `Verify.ps1`; both include
+  seeded operation sequences, cancellation, normalization idempotence, identity retention and corruption/failure cases.
 - Normalization must not repeatedly divide weights already summing to one: floating-point drift
   caused non-idempotent serialized results. Preserve sufficiently normalized values.
 
