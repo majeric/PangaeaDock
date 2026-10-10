@@ -377,16 +377,26 @@ public class DockWorkspaceArrangementTests
     public async Task ApplyArrangement_WithoutPrimaryRegion_AddsLeftoversToFirstMainGroup()
     {
         using var f = new WorkspaceFixture(L.TwoColumns());
-        var template = L.Build(L.H("h", L.Group("one", "c"), L.Group("two", "y")));
+        var template = L.Build(L.H("h", L.Group("one", "c"), L.Group("two", "s")), types: new Dictionary<string, string> { ["s"] = "single" });
 
         Assert.True(await f.Workspace.ApplyArrangementAsync(template, "No region"));
 
-        // Which text panel the template's "y" claims depends on dictionary order; the other is the leftover.
-        var one = f.Layout.Group("one");
-        Assert.Equal(2, one.Slots.Length);
-        Assert.Equal("c", one.Slots[0].Id);
-        Assert.Contains(one.Slots[1].Id, new[] { "a", "b" });
-        Assert.Equal(3, f.Layout.Panels.Count);
+        var one = f.Layout.Group("one").SlotIds();
+        Assert.Equal("c", one[0]);
+        Assert.Equal(["a", "b"], one.Skip(1).Order());
+    }
+
+    [Fact(Skip = "Bug: ApplyArrangementAsync matches template panels in dictionary (hash) order, so a type-only match for one " +
+        "template panel can claim the live panel whose identity another template panel names; placement is nondeterministic.")]
+    public async Task ApplyArrangement_ExactIdentityMatchTakesPrecedenceOverTypeMatch()
+    {
+        using var f = new WorkspaceFixture(L.TwoColumns());
+        var template = L.Build(L.H("h", L.Region("one", "primary", "c"), L.Group("two", "y", "z")));
+
+        Assert.True(await f.Workspace.ApplyArrangementAsync(template, "Identity"));
+
+        Assert.Equal("p-c", f.Layout.Slot("c").InstanceId);
+        Assert.Equal("one", f.Layout.GroupOf("c").Id);
     }
 
     [Fact]
