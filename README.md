@@ -76,7 +76,8 @@ sealed class NotesView(NotesSession session) : UserControl { /* ... */ }
 ```
 
 Create everything on the UI thread. Dispose the `DockWorkspaceControl` before the `DockWorkspace`.
-See [PACKAGE_README.md](PACKAGE_README.md) for commands, undo, guards, theming and storage, and
+The [Usage Guide](docs/USAGE.md) covers commands, sessions, close guards, floating windows, trays,
+undo, persistence, theming and app integration; [PACKAGE_README.md](PACKAGE_README.md) is the short version; see
 [`samples/Pangaea.Dock.Demo`](samples/Pangaea.Dock.Demo) for a complete application.
 
 ## Packages
@@ -144,6 +145,7 @@ Packages land in `artifacts/packages/`.
   hysteresis and large-workspace performance are work items.
 
 Details and evidence: [PROGRESS.md](PROGRESS.md). Release history: [CHANGELOG.md](CHANGELOG.md).
+Planned API changes for 0.2: [API review](docs/API_REVIEW.md).
 
 ## Design documents
 
