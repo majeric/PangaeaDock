@@ -47,4 +47,7 @@ Remaining release work includes native macOS/mixed-DPI qualification, custom acc
 memory-budgeted retention, per-document singleton policy, portable export sanitization, schema
 migrations and a multi-process storage coordinator. Automatic floating from a drop outside the
 workspace is not implemented; use Move to New Window. Generic application document guards need
-integration tests in the consuming application. No packages have been published.
+integration tests in the consuming application.
+
+Packages are attached to GitHub releases at https://github.com/majeric/PangaeaDock/releases
+(not published to NuGet.org). MIT licensed. Source, demo and changelog: https://github.com/majeric/PangaeaDock

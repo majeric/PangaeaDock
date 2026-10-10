@@ -4,11 +4,32 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <Version>0.1.0-preview.1</Version>
-    <Authors>Jeremy Denton</Authors>
-    <Description>Independent, transactional docking for Avalonia applications.</Description>
     <NuGetAudit>false</NuGetAudit>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-  <ItemGroup><None Include="$(MSBuildThisFileDirectory)PACKAGE_README.md" Pack="true" PackagePath="/README.md" /></ItemGroup>
+
+  <!-- Package metadata shared by Pangaea.Dock.Core, .Runtime and .Avalonia.
+       Each library csproj sets its own Description. -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>Jeremy Denton</Authors>
+    <Copyright>Copyright (c) 2026 Jeremy Denton</Copyright>
+    <Description>Independent, transactional docking for Avalonia applications.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/majeric/PangaeaDock</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/majeric/PangaeaDock</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
+    <PackageTags>avalonia;docking;dock;tabs;split;floating-windows;layout;desktop;ui</PackageTags>
+    <PackageReleaseNotes>https://github.com/majeric/PangaeaDock/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <!-- Symbols and SourceLink (built into the .NET 8+ SDK for GitHub-hosted repositories). -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)PACKAGE_README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
 </Project>

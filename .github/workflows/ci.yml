@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Release build, core/runtime checks, then the headless Avalonia/Skia harness (no display needed).
+      - name: Build and test
+        shell: pwsh
+        run: ./Verify.ps1
+
+      # Pack all three libraries and build/render a consumer restored only from those packages.
+      - name: Pack and package smoke test
+        shell: pwsh
+        run: ./Pack-And-Smoke.ps1
+
+      - name: Upload rendered UI frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-frames
+          path: artifacts/ui/
+          if-no-files-found: warn
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg

@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Pangaea Dock for Avalonia 11: docking controls with tabs, splits, drag previews, floating windows, border trays, panel menus and picker, and neutral light/dark chrome. No Dock.Avalonia, Material or ReactiveUI dependency.</Description>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Pangaea.Dock.Runtime/Pangaea.Dock.Runtime.csproj" />
     <PackageReference Include="Avalonia" />

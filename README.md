@@ -1,105 +1,163 @@
-# Pangaea Dock — bring your panels together
+# Pangaea Dock
 
-Status: **working evaluation preview 0.1**, 2026-10-10. Independent libraries, a runnable desktop
-demo, automated model/runtime tests, rendered interaction tests and local NuGet packages exist.
-This is not yet the production release described by every acceptance gate in the design plan.
+**Bring your panels together.** An independent docking library for [Avalonia 11](https://avaloniaui.net/):
+tabs, splits, floating windows, border trays, layout undo and data-only persistence.
 
-Pangaea Dock is an independent Avalonia docking library. It replaces Dock.Avalonia itself; it is not a
-Laurentia docking wrapper. Its model, engine, content lifecycle and controls must work in an
-ordinary Avalonia application with no Laurentia, AdaSuite, Material.Avalonia or ReactiveUI dependency.
-Laurentia will be one consumer, with a separate integration layer owned by Laurentia.
+[![CI](https://github.com/majeric/PangaeaDock/actions/workflows/ci.yml/badge.svg)](https://github.com/majeric/PangaeaDock/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Run the example
+![Pangaea Dock demo, dark theme](docs/images/explore-dark.png)
 
-Double-click **[Run-Demo.cmd](Run-Demo.cmd)** from Explorer. It builds the Release example using
-the .NET 10 SDK, then opens the application. Avalonia's build telemetry is disabled for this
-build invocation so it does not need to write outside the project during an agent build.
+> **Status: 0.1 evaluation preview.** It works and is tested, but the API may change before 1.0 and
+> some production gates (native multi-monitor/macOS qualification, accessibility certification,
+> storage migrations) are still open. See [Project status](#project-status).
 
-The already-built executable is at
-`samples/Pangaea.Dock.Demo/bin/Release/net10.0/Pangaea.Dock.Demo.exe`.
-Run that directly if you do not need to rebuild. No installation or administrator access is needed.
+## Features
 
-Try these interactions:
+- **Tabs and splits** — drag a tab to the centre of a group to join it, or to an edge to split.
+  The preview shows the exact result; Escape cancels.
+- **Floating windows** — move any tab to its own native window and back again.
+- **Border trays** — collapse a group to any of the four edges; open it temporarily or pin it.
+- **Interchangeable panels** — Replace, Duplicate, Swap and Close from the tab menu; replacement
+  keeps the tab exactly where it was. A searchable picker adds panels.
+- **Layout undo/redo** — Ctrl+Alt+Z / Ctrl+Alt+Y. Closed panels come back with their live state.
+- **Transactional engine** — every change is a pure, revision-checked plan; async close guards can
+  veto it, and failures roll back.
+- **Data-only persistence** — JSON layouts with atomic writes, last-good backup and validated import.
+  Your panels supply their own state; nothing is serialized by reflection.
+- **Light and dark** — neutral chrome that sits on your app's existing Avalonia theme.
+- **Few dependencies** — just Avalonia. No Dock.Avalonia, Material.Avalonia or ReactiveUI.
 
-1. Drag **Notes** onto the center of **Inspector** to make a tabbed group.
-2. Drag a tab near a panel edge; release to commit the highlighted split. Escape cancels.
-3. Drag the dotted grip to move a whole group, or drag a separator to resize it.
-4. Right-click a tab for **Replace**, **Duplicate**, **Swap**, **Move to New Window**, or **Close**.
-5. Use a group's **⋯** menu to collapse it to a sidebar. Click its icon to open it; **↗** pins it.
-6. Switch **Explore / Focus**, edit Notes, then switch back. Live panel state follows the panel.
-7. Try **Undo layout / Redo** (Ctrl+Alt+Z/Y), including after replacing, closing or resetting.
-8. Save a named arrangement, export/import it, and switch to the light theme.
+| Drag preview | Light theme |
+|---|---|
+| ![Dragging Notes onto the Inspector group](docs/images/drag-preview.png) | ![Light theme](docs/images/explore-light.png) |
 
-The demo has six panel types: Atlas, Notes, Inspector, Expedition, Activity and Palette. Some
-are singletons; the panel picker marks them already open and activates them instead of duplicating.
-The demo's Inspector/Expedition are sample content, not a complete cartography application.
+## Install
 
-Session and named-workspace files live under `%LOCALAPPDATA%\PangaeaDock\Demo` when you run the
-desktop demo. Tests disable that persistence. Exports contain demo scratch notes; they are layout
-snapshots with application-provided panel state, not sanitized portable workspace templates yet.
+Packages are attached to each [GitHub release](https://github.com/majeric/PangaeaDock/releases)
+(they are not on NuGet.org). Download the `.nupkg` files into a folder and add it as a package source:
 
-## Use the library
+```powershell
+dotnet nuget add source C:\path\to\packages --name PangaeaDock
+dotnet add package Pangaea.Dock.Avalonia --version 0.1.0
+```
 
-See [package setup and API usage](PACKAGE_README.md). The package family is:
+`Pangaea.Dock.Avalonia` brings in `Pangaea.Dock.Runtime` and `Pangaea.Dock.Core`.
+Requires .NET 10 and Avalonia 11.3.
+
+## Quick start
+
+```csharp
+using Avalonia.Controls;
+using Pangaea.Dock.Avalonia;
+using Pangaea.Dock.Core;
+using Pangaea.Dock.Runtime;
+
+// 1. Register panel types: a descriptor plus a factory for the nonvisual session.
+var panels = new PanelRegistry();
+panels.Register(new PanelDescriptor("notes", "Notes"), _ => new NotesSession());
+
+// 2. Register a view factory for each panel type.
+var views = new PanelViewRegistry();
+views.Register("notes", session => new NotesView((NotesSession)session));
+
+// 3. Create the workspace, add a panel, and show it.
+var workspace = new DockWorkspace(panels);
+await workspace.AddAsync("notes", workspace.Layout.Groups.First().Id);
+window.Content = new DockWorkspaceControl(workspace, views);
+
+// Your types:
+sealed class NotesSession : PanelSession
+{
+    public override string CaptureState() => "{}";              // panel view state as JSON
+    public override void RestoreState(string json, int version) { }
+}
+sealed class NotesView(NotesSession session) : UserControl { /* ... */ }
+```
+
+Create everything on the UI thread. Dispose the `DockWorkspaceControl` before the `DockWorkspace`.
+See [PACKAGE_README.md](PACKAGE_README.md) for commands, undo, guards, theming and storage, and
+[`samples/Pangaea.Dock.Demo`](samples/Pangaea.Dock.Demo) for a complete application.
+
+## Packages
 
 | Package | Responsibility |
 |---|---|
-| `Pangaea.Dock.Core` | Immutable layout, pure operations, validation, normalization and geometry |
-| `Pangaea.Dock.Runtime` | Registry, panel sessions, guards, transaction commit, undo/redo and JSON storage |
-| `Pangaea.Dock.Avalonia` | Controls, drag previews, panel menus, picker, rails and floating windows |
+| `Pangaea.Dock.Core` | Immutable layout model, pure operations, validation, normalization and geometry. No UI dependency. |
+| `Pangaea.Dock.Runtime` | Panel registry, sessions, guards, transaction commit, undo/redo and JSON storage. |
+| `Pangaea.Dock.Avalonia` | Controls, drag previews, menus, picker, border trays and floating windows. |
 
-Local `.nupkg` files are in `artifacts/packages/`. Nothing has been published. Distribution license
-and public package-name availability still need to be decided/checked before publishing.
+## Run the demo
 
-## Verify
+On Windows, double-click **[Run-Demo.cmd](Run-Demo.cmd)** (builds and launches the Release demo), or:
 
 ```powershell
-.\Verify.ps1
-.\Pack-And-Smoke.ps1 -Offline
+dotnet run --project samples/Pangaea.Dock.Demo -c Release
 ```
 
-`Verify.ps1` builds Release, runs the pure/runtime suite, then drives the real demo through
-Avalonia's headless backend with Skia rendering. Frames are written to `artifacts/ui/`.
-`Pack-And-Smoke.ps1` packs all three libraries and restores/builds/renders a separate consumer
-using only NuGet references. `-Offline` uses the already-installed package cache; omit it on a
-fresh machine with network access. No validation command launches a visible desktop window.
+Things to try:
 
-The two executable test projects are console assertion harnesses, not `dotnet test` adapters.
-The package smoke project is intentionally outside the solution: its local packages must exist
-before restore. The library has no Laurentia or existing Dock dependency.
+1. Drag **Notes** onto the centre of **Inspector** to make a tabbed group.
+2. Drag a tab near a panel edge and release to split. Escape cancels.
+3. Drag the dotted grip to move a whole group, or drag a separator to resize.
+4. Right-click a tab for **Replace**, **Duplicate**, **Swap**, **Move to New Window** or **Close**.
+5. Use a group's **⋯** menu to collapse it to a tray; click its icon to open it, **↗** pins it.
+6. Switch **Explore / Focus**, edit Notes, switch back — live panel state follows the panel.
+7. **Undo layout / Redo** (Ctrl+Alt+Z/Y), including after replacing, closing or resetting.
+8. Save a named arrangement, export/import it, and switch to the light theme.
 
-## Current limits
+The demo stores its session under `%LOCALAPPDATA%\PangaeaDock\Demo`. Exports include the demo's
+scratch notes; they are layout snapshots with panel state, not sanitized portable templates.
 
-- Captured-pointer cross-host dragging is exercised headlessly; actual Windows multi-monitor,
-  mixed-DPI and macOS interaction still require native qualification. Use **Move to New Window**
-  to float; dragging onto bare desktop does not yet create a floating window.
-- Keyboard commands and accessibility names exist; custom automation peers, high-contrast and
-  screen-reader certification, reduced-motion policy and novice usability studies remain open.
-- History is bounded by operation count, not retained memory. Async close guards exist; production
-  document lifetime/recovery integration belongs to consuming applications and is not demonstrated
-  by scratch-note panels.
-- Storage supports schema 1, bounded validation, atomic writes and last-good backup. Version
-  migrations, sanitized portable exports, cross-process writes and monitor-topology reconciliation
-  are not complete. Named arrangements preserve live panels, including ones absent from a template.
-- The current UI rebuilds group chrome on commit while retaining panel controls. More granular
-  focus/bookmark preservation, target hysteresis and large-workspace performance are still work items.
-- Laurentia renders its shell through this library via its own adapter (`Laurentia/Dock/PangaeaDockHost.cs`);
-  its document/palette contracts still use Dock.Avalonia types until the later migration.
+## Build and test
 
-## Design and continuation
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
-Read in this order:
+```powershell
+./Verify.ps1               # Release build, core/runtime checks, headless UI checks
+./Pack-And-Smoke.ps1       # pack all three libraries; build and render a package-only consumer
+```
 
-1. [Design brief](DESIGN_BRIEF.md) — the user's original requirements, preserved verbatim.
+- `tests/Pangaea.Dock.Tests` — model, engine, runtime and storage checks.
+- `tests/Pangaea.Dock.Harness` — drives the real demo through Avalonia.Headless with Skia
+  rendering and writes frames to `artifacts/ui/`. No visible window, mouse or keyboard is used.
+- `tests/Pangaea.Dock.PackageSmoke` — restored only from the packed `.nupkg` files; intentionally
+  outside the solution. `-Offline` restores from the local package cache only.
+
+Both test projects are console programs that exit non-zero on failure, not `dotnet test` adapters.
+Packages land in `artifacts/packages/`.
+
+## Project status
+
+0.1.0 is an evaluation preview. Known limits:
+
+- Cross-window dragging is exercised headlessly; native Windows multi-monitor, mixed-DPI and macOS
+  interaction still need qualification. Dropping on bare desktop does not yet create a floating
+  window — use **Move to New Window**.
+- Keyboard routes and accessible names exist; custom automation peers, high-contrast and
+  screen-reader certification, and reduced-motion policy are open.
+- History is bounded by operation count, not memory. Document lifetime, saving and recovery belong
+  to the consuming application.
+- Storage is schema 1 with validation, atomic writes and backup; migrations, sanitized portable
+  exports and multi-process coordination are not done.
+- Group chrome is rebuilt on commit (panel controls are retained); finer focus preservation, drop
+  hysteresis and large-workspace performance are work items.
+
+Details and evidence: [PROGRESS.md](PROGRESS.md). Release history: [CHANGELOG.md](CHANGELOG.md).
+
+## Design documents
+
+1. [Design brief](DESIGN_BRIEF.md) — the original requirements, preserved verbatim.
 2. [Architecture](ARCHITECTURE.md) — boundaries, identities, contracts, interaction semantics,
-   persistence, reliability and consumer integration.
-3. [Implementation plan](IMPLEMENTATION_PLAN.md) — ordered work packages, acceptance tests,
-   migration gates and a reusable agent assignment.
+   persistence, reliability and consumer integration. Describes the intended complete product.
+3. [Implementation plan](IMPLEMENTATION_PLAN.md) — work packages, acceptance tests and migration gates.
+4. [Orientation](ORIENTATION.md) — where things live in the source, and how to verify changes.
+5. [Progress](PROGRESS.md) — what is implemented, the evidence, and remaining gaps.
+6. [Decision records](docs/decisions/) — e.g. [drag transport](docs/decisions/0001-drag-transport.md).
 
-4. [Orientation](ORIENTATION.md) — current source seams and verification commands.
-5. [Progress](PROGRESS.md) — implemented behavior, evidence and remaining acceptance gaps.
+The public API in source and [PACKAGE_README.md](PACKAGE_README.md) describes this release;
+don't infer completion of a work package from a similarly named control.
 
-This directory is a standalone repository/package boundary, located in AdaSuite for convenience.
-`ARCHITECTURE.md` describes the intended complete product; the current public APIs in source and
-`PACKAGE_README.md` describe the evaluation build. Do not infer completion of a work package from
-the existence of a similarly named control.
+## License
+
+[MIT](LICENSE) © 2026 Jeremy Denton

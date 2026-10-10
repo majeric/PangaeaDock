@@ -1,3 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Pangaea Dock runtime: panel registry, retained panel sessions, transactional commits with release guards, layout undo/redo and data-only JSON workspace storage.</Description>
+  </PropertyGroup>
   <ItemGroup><ProjectReference Include="../Pangaea.Dock.Core/Pangaea.Dock.Core.csproj" /></ItemGroup>
 </Project>
